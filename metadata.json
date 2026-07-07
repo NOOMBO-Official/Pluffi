@@ -1,0 +1,6 @@
+{
+  "name": "Pluffi",
+  "description": "A highly personalized, vibrant, and enthusiastic AI personal closet stylist that acts like Alexa or Siri, but for fashion.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

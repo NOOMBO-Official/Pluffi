@@ -1,0 +1,57 @@
+{
+  "entities": {
+    "Item": {
+      "title": "Item",
+      "description": "A single wardrobe item",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "createdAt": { "type": "number", "description": "Timestamp in milliseconds" }
+      },
+      "required": ["userId", "imageUrl", "createdAt"]
+    },
+    "Outfit": {
+      "title": "Outfit",
+      "description": "A combination of items representing an outfit",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "itemIds": { "type": "array", "items": { "type": "string" } },
+        "prompt": { "type": "string" },
+        "explanation": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["userId", "itemIds", "createdAt"]
+    },
+    "Event": {
+      "title": "Event",
+      "description": "A calendar event for outfit planning",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "date": { "type": "string" },
+        "outfitId": { "type": "string" },
+        "title": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["userId", "date", "title", "createdAt"]
+    }
+  },
+  "firestore": {
+    "users/{userId}/wardrobe/{itemId}": {
+      "schema": { "$ref": "#/entities/Item" },
+      "description": "User's uploaded wardrobe items"
+    },
+    "users/{userId}/outfits/{outfitId}": {
+      "schema": { "$ref": "#/entities/Outfit" },
+      "description": "User's generated outfits"
+    },
+    "users/{userId}/events/{eventId}": {
+      "schema": { "$ref": "#/entities/Event" },
+      "description": "User's calendar events"
+    }
+  }
+}

@@ -1,0 +1,90 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global Helpers
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+
+    function isValidItem(data, userId) {
+      return data.keys().hasAll(['userId', 'imageUrl', 'createdAt']) &&
+        data.keys().size() >= 3 &&
+        data.userId == userId &&
+        data.imageUrl is string && data.imageUrl.size() <= 10485760 &&
+        data.createdAt is number &&
+        (data.get('category', '') is string) && (data.keys().hasAll(['category']) ? data.category.size() <= 100 : true) &&
+        (data.get('description', '') is string) && (data.keys().hasAll(['description']) ? data.description.size() <= 1000 : true) &&
+        (data.get('color', '') is string) && (data.keys().hasAll(['color']) ? data.color.size() <= 100 : true) &&
+        (data.get('brand', '') is string) && (data.keys().hasAll(['brand']) ? data.brand.size() <= 100 : true) &&
+        (data.get('size', '') is string) && (data.keys().hasAll(['size']) ? data.size.size() <= 100 : true);
+    }
+
+    function isValidOutfit(data, userId) {
+      return data.keys().hasAll(['userId', 'itemIds', 'createdAt']) &&
+        data.keys().size() >= 3 &&
+        data.userId == userId &&
+        data.itemIds is list && data.itemIds.size() <= 20 &&
+        (data.itemIds.size() > 0 ? data.itemIds[0] is string : true) &&
+        data.createdAt is number &&
+        (data.get('prompt', '') is string) && (data.keys().hasAll(['prompt']) ? data.prompt.size() <= 1000 : true) &&
+        (data.get('explanation', '') is string) && (data.keys().hasAll(['explanation']) ? data.explanation.size() <= 1000 : true);
+    }
+
+    function isValidEvent(data, userId) {
+      return data.keys().hasAll(['userId', 'date', 'title', 'createdAt']) &&
+        data.keys().size() >= 4 &&
+        data.userId == userId &&
+        data.date is string && data.date.size() <= 50 &&
+        data.title is string && data.title.size() <= 200 &&
+        data.createdAt is number &&
+        (data.get('outfitId', '') is string) && (data.keys().hasAll(['outfitId']) ? data.outfitId.size() <= 128 : true);
+    }
+
+    function isValidModel(data) {
+      return data.keys().hasAll(['imageUrl', 'updatedAt']) &&
+        data.imageUrl is string && data.imageUrl.size() <= 10485760 &&
+        data.updatedAt is number;
+    }
+
+    match /users/{userId}/model/{modelId} {
+      allow read, list: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidId(modelId) && isValidModel(incoming());
+      allow delete: if isOwner(userId) && isValidId(modelId);
+    }
+
+    match /users/{userId}/wardrobe/{itemId} {
+      allow read, list: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidId(itemId) && isValidItem(incoming(), userId);
+      allow update: if isOwner(userId) && isValidId(itemId) && isValidItem(incoming(), userId) &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt;
+      allow delete: if isOwner(userId) && isValidId(itemId);
+    }
+
+    match /users/{userId}/outfits/{outfitId} {
+      allow read, list: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidId(outfitId) && isValidOutfit(incoming(), userId);
+      allow update: if isOwner(userId) && isValidId(outfitId) && isValidOutfit(incoming(), userId) &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt;
+      allow delete: if isOwner(userId) && isValidId(outfitId);
+    }
+
+    match /users/{userId}/events/{eventId} {
+      allow read, list: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidId(eventId) && isValidEvent(incoming(), userId);
+      allow update: if isOwner(userId) && isValidId(eventId) && isValidEvent(incoming(), userId) &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt;
+      allow delete: if isOwner(userId) && isValidId(eventId);
+    }
+  }
+}
