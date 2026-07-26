@@ -7,13 +7,10 @@ import type { WebSocket } from "ws";
 
 
 import fs from "fs";
-import { fileURLToPath } from "url";
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 let firebaseConfig: any = {};
 try {
-  const configPath = path.join(__dirname, "firebase-applet-config.json");
+  const configPath = path.join(process.cwd(), "firebase-applet-config.json");
   firebaseConfig = JSON.parse(fs.readFileSync(configPath, "utf8"));
 } catch(e) {
   try {
@@ -354,7 +351,8 @@ app.post("/api/try-on/generate", async (req, res) => {
     // Process outfits and remove background
     const processedOutfits = [];
     try {
-      const { removeBackground } = await import('@imgly/background-removal-node');
+      const pkgName = "@imgly/background-removal-node";
+      const { removeBackground } = await import(pkgName);
       for (const img of outfitImages) {
         try {
           console.log("Removing background from outfit image...");
@@ -474,7 +472,8 @@ app.post("/api/try-on/generate", async (req, res) => {
 async function startServer() {
   // Vite middlewware for dev, Static files for prod
   if (process.env.NODE_ENV !== "production") {
-    const { createServer: createViteServer } = await import("vite");
+    const vitePkg = "vite";
+    const { createServer: createViteServer } = await import(vitePkg);
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
