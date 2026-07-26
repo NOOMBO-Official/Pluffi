@@ -1,9 +1,8 @@
 import express from "express";
 import path from "path";
-import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, LiveServerMessage, Modality, Type } from "@google/genai";
-import { WebSocketServer, WebSocket } from "ws";
 import admin from "firebase-admin";
+import type { WebSocket } from "ws";
 
 const getWeatherDeclaration = {
   name: "getWeather",
@@ -68,38 +67,52 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 const qrSessions: Record<string, { customToken: string | null; createdAt: number }> = {};
 
 // API Routes
-app.post("/api/qr-token/create", (req, res) => {
+app.post("/api/qr-token/create", async (req, res) => {
   if (!adminInitialized) return res.status(501).json({ error: "Firebase Admin not configured" });
-  const sessionId = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
-  qrSessions[sessionId] = { customToken: null, createdAt: Date.now() };
-  res.json({ sessionId });
+  try {
+    const sessionId = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+    await admin.firestore().collection("qr_sessions").doc(sessionId).set({ customToken: null, createdAt: Date.now() });
+    res.json({ sessionId });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 app.post("/api/qr-token/approve", async (req, res) => {
   if (!adminInitialized) return res.status(501).json({ error: "Firebase Admin not configured" });
   const { sessionId, idToken } = req.body;
-  if (!qrSessions[sessionId]) return res.status(404).json({ error: "Session not found or expired" });
   
   try {
+    const doc = await admin.firestore().collection("qr_sessions").doc(sessionId).get();
+    if (!doc.exists) return res.status(404).json({ error: "Session not found or expired" });
+
     const decoded = await admin.auth().verifyIdToken(idToken);
     const customToken = await admin.auth().createCustomToken(decoded.uid);
-    qrSessions[sessionId].customToken = customToken;
+    
+    await admin.firestore().collection("qr_sessions").doc(sessionId).update({ customToken });
     res.json({ success: true });
   } catch(e: any) {
     console.error(e);
-    res.status(401).json({ error: "Failed to verify ID token" });
+    res.status(401).json({ error: "Failed to verify ID token or update session" });
   }
 });
 
-app.get("/api/qr-token/poll/:sessionId", (req, res) => {
-  const session = qrSessions[req.params.sessionId];
-  if (!session) return res.status(404).json({ error: "Session not found" });
-  if (session.customToken) {
-    const customToken = session.customToken;
-    delete qrSessions[req.params.sessionId]; // Clean up
-    return res.json({ status: "approved", customToken });
+app.get("/api/qr-token/poll/:sessionId", async (req, res) => {
+  if (!adminInitialized) return res.status(501).json({ error: "Firebase Admin not configured" });
+  try {
+    const doc = await admin.firestore().collection("qr_sessions").doc(req.params.sessionId).get();
+    if (!doc.exists) return res.status(404).json({ error: "Session not found" });
+    
+    const session = doc.data();
+    if (session?.customToken) {
+      const customToken = session.customToken;
+      await admin.firestore().collection("qr_sessions").doc(req.params.sessionId).delete(); // Clean up
+      return res.json({ status: "approved", customToken });
+    }
+    res.json({ status: "pending" });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
   }
-  res.json({ status: "pending" });
 });
 
 app.post("/api/analyze-item", async (req, res) => {
@@ -438,6 +451,7 @@ app.post("/api/try-on/generate", async (req, res) => {
 async function startServer() {
   // Vite middlewware for dev, Static files for prod
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -457,6 +471,7 @@ async function startServer() {
   });
 
   // Setup WebSocket Server for Gemini Live API
+  const { WebSocketServer } = await import("ws");
   const wss = new WebSocketServer({ server, path: "/live" });
 
   wss.on("connection", async (clientWs: WebSocket) => {

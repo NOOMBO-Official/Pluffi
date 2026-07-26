@@ -16,13 +16,24 @@ export function DeviceLinkDisplay() {
     const startSession = async () => {
       try {
         const res = await fetch('/api/qr-token/create', { method: 'POST' });
+        if (!res.ok) {
+           const errText = await res.text();
+           let errMessage = "Failed to create QR session.";
+           try {
+              const errJson = JSON.parse(errText);
+              errMessage = errJson.error || errMessage;
+           } catch {
+              errMessage = `Server Error: ${errText.substring(0, 100)}`;
+           }
+           throw new Error(errMessage);
+        }
         const data = await res.json();
-        if (data.error) throw new Error(data.error);
         setSessionId(data.sessionId);
         
         interval = setInterval(async () => {
           try {
             const pollRes = await fetch(`/api/qr-token/poll/${data.sessionId}`);
+            if (!pollRes.ok) throw new Error("Poll request failed");
             const pollData = await pollRes.json();
             if (pollData.status === 'approved' && pollData.customToken) {
               clearInterval(interval);
