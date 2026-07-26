@@ -6,7 +6,23 @@ import { getFirestore } from "firebase-admin/firestore";
 import type { WebSocket } from "ws";
 
 
-import firebaseConfig from "./firebase-applet-config.json";
+import fs from "fs";
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+let firebaseConfig: any = {};
+try {
+  const configPath = path.join(__dirname, "firebase-applet-config.json");
+  firebaseConfig = JSON.parse(fs.readFileSync(configPath, "utf8"));
+} catch(e) {
+  try {
+    const configPath2 = path.join(process.cwd(), "firebase-applet-config.json");
+    firebaseConfig = JSON.parse(fs.readFileSync(configPath2, "utf8"));
+  } catch(e2) {
+    console.error("Could not load firebase-applet-config.json");
+  }
+}
 
 const dbId = firebaseConfig.firestoreDatabaseId || "(default)";
 const getDb = () => getFirestore(admin.app(), dbId);
