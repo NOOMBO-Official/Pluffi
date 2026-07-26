@@ -32,6 +32,18 @@ export default function LinkDevicePage() {
           body: JSON.stringify({ sessionId, idToken })
         });
         
+        if (!response.ok) {
+           const errText = await response.text();
+           let errMessage = "Failed to link device.";
+           try {
+              const errJson = JSON.parse(errText);
+              errMessage = errJson.error || errMessage;
+           } catch {
+              errMessage = `Server Error: ${errText.substring(0, 100)}`;
+           }
+           throw new Error(errMessage);
+        }
+
         const data = await response.json();
         if (data.error) throw new Error(data.error);
 
