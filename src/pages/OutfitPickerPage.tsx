@@ -92,6 +92,7 @@ export default function OutfitPickerPage() {
         })
       });
 
+      if (!response.ok) { const text = await response.text(); throw new Error(text.substring(0, 100)); }
       const data = await response.json();
       if (data.error) throw new Error(data.error);
       setTryOnImage(data.result);
@@ -113,6 +114,7 @@ export default function OutfitPickerPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt, items: allItems })
       });
+      if (!response.ok) { const text = await response.text(); throw new Error(text.substring(0, 100)); }
       const data = await response.json();
       if (data.error) throw new Error(data.error);
 

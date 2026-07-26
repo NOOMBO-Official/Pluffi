@@ -98,6 +98,7 @@ export default function CalendarPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: autoPlanPrompt, items: wardrobe, startDate: format(date, 'yyyy-MM-dd') })
       });
+      if (!res.ok) { const text = await res.text(); throw new Error(text.substring(0, 100)); }
       const data = await res.json();
       if (data.error) throw new Error(data.error);
 

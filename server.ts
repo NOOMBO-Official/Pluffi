@@ -2,7 +2,12 @@ import express from "express";
 import path from "path";
 import { GoogleGenAI, LiveServerMessage, Modality, Type } from "@google/genai";
 import admin from "firebase-admin";
+import { getFirestore } from "firebase-admin/firestore";
 import type { WebSocket } from "ws";
+import firebaseConfig from "./firebase-applet-config.json" assert { type: "json" };
+
+const dbId = firebaseConfig.firestoreDatabaseId || "(default)";
+const getDb = () => getFirestore(admin.app(), dbId);
 
 const getWeatherDeclaration = {
   name: "getWeather",
@@ -71,7 +76,7 @@ app.post("/api/qr-token/create", async (req, res) => {
   if (!adminInitialized) return res.status(501).json({ error: "Firebase Admin not configured" });
   try {
     const sessionId = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
-    await admin.firestore().collection("qr_sessions").doc(sessionId).set({ customToken: null, createdAt: Date.now() });
+    await getDb().collection("qr_sessions").doc(sessionId).set({ customToken: null, createdAt: Date.now() });
     res.json({ sessionId });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
@@ -83,13 +88,13 @@ app.post("/api/qr-token/approve", async (req, res) => {
   const { sessionId, idToken } = req.body;
   
   try {
-    const doc = await admin.firestore().collection("qr_sessions").doc(sessionId).get();
+    const doc = await getDb().collection("qr_sessions").doc(sessionId).get();
     if (!doc.exists) return res.status(404).json({ error: "Session not found or expired" });
 
     const decoded = await admin.auth().verifyIdToken(idToken);
     const customToken = await admin.auth().createCustomToken(decoded.uid);
     
-    await admin.firestore().collection("qr_sessions").doc(sessionId).update({ customToken });
+    await getDb().collection("qr_sessions").doc(sessionId).update({ customToken });
     res.json({ success: true });
   } catch(e: any) {
     console.error(e);
@@ -100,13 +105,13 @@ app.post("/api/qr-token/approve", async (req, res) => {
 app.get("/api/qr-token/poll/:sessionId", async (req, res) => {
   if (!adminInitialized) return res.status(501).json({ error: "Firebase Admin not configured" });
   try {
-    const doc = await admin.firestore().collection("qr_sessions").doc(req.params.sessionId).get();
+    const doc = await getDb().collection("qr_sessions").doc(req.params.sessionId).get();
     if (!doc.exists) return res.status(404).json({ error: "Session not found" });
     
     const session = doc.data();
     if (session?.customToken) {
       const customToken = session.customToken;
-      await admin.firestore().collection("qr_sessions").doc(req.params.sessionId).delete(); // Clean up
+      await getDb().collection("qr_sessions").doc(req.params.sessionId).delete(); // Clean up
       return res.json({ status: "approved", customToken });
     }
     res.json({ status: "pending" });

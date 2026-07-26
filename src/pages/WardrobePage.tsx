@@ -75,6 +75,7 @@ export default function WardrobePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: base64Image, mimeType: file.type || 'image/jpeg' })
       });
+      if (!res.ok) { const text = await res.text(); throw new Error(text.substring(0, 100)); }
       const data = await res.json();
       if (data.error) throw new Error(data.error);
 
