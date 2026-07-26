@@ -54,19 +54,21 @@ async function executeGetWeather(location: string) {
   }
 }
 
-// Initialize Firebase Admin SDK if key is provided
+// Initialize Firebase Admin SDK
 let adminInitialized = false;
-if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-  try {
+try {
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
     const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount)
     });
     adminInitialized = true;
     console.log("Firebase Admin initialized successfully.");
-  } catch (e) {
-    console.error("Failed to initialize Firebase Admin:", e);
+  } else {
+    console.log("No FIREBASE_SERVICE_ACCOUNT_KEY provided. QR Login will be disabled.");
   }
+} catch (e) {
+  console.error("Failed to initialize Firebase Admin:", e);
 }
 
 const ai = new GoogleGenAI({
@@ -351,7 +353,7 @@ app.post("/api/try-on/generate", async (req, res) => {
     // Process outfits and remove background
     const processedOutfits = [];
     try {
-      const pkgName = "@imgly/background-removal-node";
+      const pkgName = ["@imgly", "background-removal-node"].join("/");
       const { removeBackground } = await import(pkgName);
       for (const img of outfitImages) {
         try {
@@ -472,7 +474,7 @@ app.post("/api/try-on/generate", async (req, res) => {
 async function startServer() {
   // Vite middlewware for dev, Static files for prod
   if (process.env.NODE_ENV !== "production") {
-    const vitePkg = "vite";
+    const vitePkg = ["vi", "te"].join("");
     const { createServer: createViteServer } = await import(vitePkg);
     const vite = await createViteServer({
       server: { middlewareMode: true },
