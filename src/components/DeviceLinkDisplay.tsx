@@ -34,7 +34,11 @@ export function DeviceLinkDisplay() {
           }
         }, 2000);
       } catch(e: any) {
-        setError(e.message || "Failed to create QR session. Backend may not be configured.");
+        if (e.message.includes("Firebase Admin not configured")) {
+          setError("QR Login requires a backend. Add FIREBASE_SERVICE_ACCOUNT_KEY in your Vercel Environment Variables to enable this feature.");
+        } else {
+          setError(e.message || "Failed to create QR session. Backend may not be configured.");
+        }
       }
     };
 
