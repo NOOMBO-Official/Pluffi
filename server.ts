@@ -4,7 +4,9 @@ import { GoogleGenAI, LiveServerMessage, Modality, Type } from "@google/genai";
 import admin from "firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
 import type { WebSocket } from "ws";
-import firebaseConfig from "./firebase-applet-config.json" with { type: "json" };
+
+
+import firebaseConfig from "./firebase-applet-config.json";
 
 const dbId = firebaseConfig.firestoreDatabaseId || "(default)";
 const getDb = () => getFirestore(admin.app(), dbId);
